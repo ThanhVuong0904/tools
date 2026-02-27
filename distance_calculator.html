@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Công cụ tính khoảng cách Lat/Lon</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/geolib@3.3.4/lib/index.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .input-group {
+            transition: all 0.3s ease;
+        }
+        .input-group:focus-within {
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+        <!-- Header -->
+        <div class="bg-indigo-600 p-6 text-white text-center">
+            <h1 class="text-2xl font-bold">Tính Khoảng Cách</h1>
+            <p class="text-indigo-200 text-sm mt-1">Giữa hai tọa độ địa lý (Lat, Lon)</p>
+        </div>
+
+        <!-- Form Content -->
+        <div class="p-8 space-y-6">
+            
+            <!-- Point A -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between text-indigo-600 border-b pb-2 mb-3">
+                    <div class="flex items-center space-x-2 font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                        </svg>
+                        <span>Điểm A</span>
+                    </div>
+                </div>
+
+                <!-- Parse Input A -->
+                <div class="mb-2">
+                    <input type="text" id="raw-a" placeholder='Dán JSON/Text vào đây (vd: {lat: 10.7, lon: 106.6} )'
+                           class="w-full px-3 py-2 text-sm bg-indigo-50 border border-indigo-100 rounded-lg focus:ring-1 focus:ring-indigo-500 outline-none text-gray-600 truncate"
+                           oninput="parseInput('raw-a', 'lat1', 'lon1')">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide">Vĩ độ (Lat)</label>
+                        <input type="number" step="any" id="lat1" placeholder="VD: 10.762" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
+                    </div>
+                    <div class="input-group">
+                        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide">Kinh độ (Lon)</label>
+                        <input type="number" step="any" id="lon1" placeholder="VD: 106.660" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-colors">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Point B -->
+            <div class="space-y-3">
+                <div class="flex items-center justify-between text-pink-600 border-b pb-2 mb-3">
+                    <div class="flex items-center space-x-2 font-semibold">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+                        </svg>
+                        <span>Điểm B</span>
+                    </div>
+                </div>
+
+                <!-- Parse Input B -->
+                <div class="mb-2">
+                    <input type="text" id="raw-b" placeholder='Dán JSON/Text vào đây (vd: {lat: 21.0, lon: 105.8} )' 
+                           class="w-full px-3 py-2 text-sm bg-pink-50 border border-pink-100 rounded-lg focus:ring-1 focus:ring-pink-500 outline-none text-gray-600 truncate"
+                           oninput="parseInput('raw-b', 'lat2', 'lon2')">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="input-group">
+                        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide">Vĩ độ (Lat)</label>
+                        <input type="number" step="any" id="lat2" placeholder="VD: 21.028" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors">
+                    </div>
+                    <div class="input-group">
+                        <label class="block text-xs text-gray-500 mb-1 uppercase tracking-wide">Kinh độ (Lon)</label>
+                        <input type="number" step="any" id="lon2" placeholder="VD: 105.854" 
+                               class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none transition-colors">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <button onclick="calculateDistance()" 
+                    class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-xl shadow-lg transform active:scale-95 transition-all duration-200 flex items-center justify-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
+                </svg>
+                <span>Tính Toán Ngay</span>
+            </button> <!-- Result Area -->
+            <div id="result-area" class="hidden space-y-4 mt-6">
+                <!-- Geolib Result -->
+                <div class="bg-indigo-50 rounded-xl p-4 border border-indigo-200 relative overflow-hidden transition-all hover:scale-[1.02]">
+                    <div class="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] uppercase font-bold px-2 py-1 rounded-bl-lg shadow-sm">
+                        Geolib (Chính xác)
+                    </div>
+                    <h3 class="text-center text-indigo-800 text-xs font-bold tracking-widest mb-1 opacity-70">KHOẢNG CÁCH THỰC TẾ</h3>
+                    <div class="flex justify-center items-baseline space-x-2 text-indigo-700">
+                        <span id="geolib-km" class="text-5xl font-extrabold tracking-tight">0.00</span>
+                        <span class="text-xl font-semibold text-indigo-600">km</span>
+                    </div>
+                    <div class="text-center mt-1 text-indigo-600 text-sm font-medium">
+                        = <span id="geolib-meters">0</span> mét
+                    </div>
+                </div>
+
+                <!-- Haversine Result -->
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-200 relative opacity-75 hover:opacity-100 transition-opacity">
+                    <div class="absolute top-0 right-0 bg-gray-200 text-gray-500 text-[10px] uppercase font-bold px-2 py-1 rounded-bl-lg">
+                        Haversine (Tham khảo)
+                    </div>
+                    <div class="flex justify-center items-baseline space-x-2 text-gray-500 scale-90">
+                        <span class="text-sm uppercase mr-2">Công thức đơn giản:</span>
+                        <span id="result-km" class="text-xl font-bold">0.00</span>
+                        <span class="text-sm font-semibold">km</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="error-message" class="hidden mt-4 text-center text-red-500 text-sm font-medium bg-red-50 p-3 rounded-lg border border-red-100">
+                Vui lòng nhập đầy đủ tọa độ hợp lệ.
+            </div>
+
+        </div>
+        
+        <!-- Footer -->
+        <div class="bg-gray-50 p-4 text-center text-xs text-gray-400 border-t">
+            Sử dụng công thức Haversine • Bán kính Trái Đất ~ 6371km
+        </div>
+    </div>
+
+    <script>
+        function parseInput(rawId, latId, lonId) {
+            const rawText = document.getElementById(rawId).value;
+            if (!rawText) return;
+
+            // Updated Regex to handle various formats
+            // Matches: "lat": 10.7, lat: 10.7, lat=10.7
+            const latRegex = /["']?(?:lat|latitude)["']?[\s:=]+([-+]?[0-9]*\.?[0-9]+)/i;
+            // Matches: "lon": 106.6, lon: 106.6, lon=106.6, lng: ...
+            const lonRegex = /["']?(?:lon|lng|longitude)["']?[\s:=]+([-+]?[0-9]*\.?[0-9]+)/i;
+
+            const latMatch = rawText.match(latRegex);
+            const lonMatch = rawText.match(lonRegex);
+
+            if (latMatch && latMatch[1]) {
+                document.getElementById(latId).value = latMatch[1];
+            }
+            if (lonMatch && lonMatch[1]) {
+                document.getElementById(lonId).value = lonMatch[1];
+            }
+
+            // Fallback for array format [lat, lon] or simple comma separated "10.7, 106.6" 
+            // if explicit keys weren't found in a confident pair
+            if (!latMatch && !lonMatch) {
+               const simplePairRegex = /([-+]?[0-9]+\.?[0-9]+)\s*,\s*([-+]?[0-9]+\.?[0-9]+)/;
+               const pairMatch = rawText.match(simplePairRegex);
+               if(pairMatch) {
+                   document.getElementById(latId).value = pairMatch[1];
+                   document.getElementById(lonId).value = pairMatch[2];
+               }
+            }
+            
+            // Auto calculate if both points have data
+            const l1 = document.getElementById('lat1').value;
+
+            const lg1 = document.getElementById('lon1').value;
+            const l2 = document.getElementById('lat2').value;
+            const lg2 = document.getElementById('lon2').value;
+
+            if(l1 && lg1 && l2 && lg2) {
+                calculateDistance();
+            }
+        }
+
+        function calculateDistance() {
+            // Get values
+            const lat1Input = document.getElementById('lat1').value;
+            const lon1Input = document.getElementById('lon1').value;
+            const lat2Input = document.getElementById('lat2').value;
+            const lon2Input = document.getElementById('lon2').value;
+            const resultArea = document.getElementById('result-area');
+            const errorMsg = document.getElementById('error-message');
+
+            // Validate inputs
+            if (!lat1Input || !lon1Input || !lat2Input || !lon2Input) {
+                errorMsg.classList.remove('hidden');
+                resultArea.classList.add('hidden');
+                return;
+            }
+
+            const lat1 = parseFloat(lat1Input);
+            const lon1 = parseFloat(lon1Input);
+            const lat2 = parseFloat(lat2Input);
+            const lon2 = parseFloat(lon2Input);
+
+            if (isNaN(lat1) || isNaN(lon1) || isNaN(lat2) || isNaN(lon2)) {
+                errorMsg.textContent = "Dữ liệu nhập vào không phải là số hợp lệ.";
+                errorMsg.classList.remove('hidden');
+                resultArea.classList.add('hidden');
+                return;
+            }
+
+            // Valid inputs, hide error
+            errorMsg.classList.add('hidden');
+
+            // Haversine Formula (Simple Approx)
+            const R = 6371; // Radius of the earth in km
+            const dLat = deg2rad(lat2 - lat1);
+            const dLon = deg2rad(lon2 - lon1);
+            const a = 
+                Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+            const d = R * c; // Distance in km
+
+            // Geolib Calculation (Precise)
+            let geolibMeters = 0;
+            if (typeof geolib !== 'undefined') {
+                geolibMeters = geolib.getPreciseDistance(
+                    { latitude: lat1, longitude: lon1 },
+                    { latitude: lat2, longitude: lon2 }
+                );
+            } else {
+                // Fallback if library fails to load
+                geolibMeters = d * 1000; 
+            }
+            const geolibKm = geolibMeters / 1000;
+
+            // Display result
+            // Haversine
+            document.getElementById('result-km').textContent = d.toLocaleString('vi-VN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            
+            // Geolib
+            document.getElementById('geolib-km').textContent = geolibKm.toLocaleString('vi-VN', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+            document.getElementById('geolib-meters').textContent = geolibMeters.toLocaleString('vi-VN');
+            
+            resultArea.classList.remove('hidden');
+            resultArea.classList.add('animate-pulse');
+            setTimeout(() => {
+                resultArea.classList.remove('animate-pulse');
+            }, 500);
+        }
+
+        function deg2rad(deg) {
+            return deg * (Math.PI/180);
+        }
+
+        // Add 'Enter' key support
+        document.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                calculateDistance();
+            }
+        });
+    </script>
+</body>
+</html>
