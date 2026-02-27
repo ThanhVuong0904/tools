@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev Tools Collection</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-8">
+
+    <div class="max-w-4xl mx-auto">
+        <!-- Header -->
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-extrabold text-slate-800 mb-2">Dev Tools Collection</h1>
+            <p class="text-slate-500">Bộ công cụ tiện ích cho Developer</p>
+        </header>
+
+        <!-- Tools Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- Tool Card: Distance Calculator -->
+            <a href="distance_calculator.html" class="block group">
+                <div class="bg-white rounded-xl shadow-sm hover:shadow-md border border-slate-200 p-6 transition-all duration-200 transform group-hover:-translate-y-1">
+                    <div class="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mb-4 text-indigo-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                        </svg>
+                    </div>
+                    <h2 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-indigo-600 transition-colors">Distance Calculator</h2>
+                    <p class="text-slate-500 text-sm">Tính khoảng cách giữa 2 tọa độ Lat/Lon. Hỗ trợ parse JSON và Geolib.</p>
+                </div>
+            </a>
+
+            <!-- Placeholder for future tools -->
+            <div class="bg-slate-50 rounded-xl border border-dashed border-slate-300 p-6 flex flex-col items-center justify-center text-slate-400">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                <span class="text-sm font-medium">Coming Soon...</span>
+            </div>
+
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-16 text-center text-sm text-slate-400">
+            <p>&copy; 2026 Tools</p>
+        </footer>
+    </div>
+
+</body>
+</html>
