@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Compare</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        textarea.json-input {
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 12px;
+            tab-size: 2;
+        }
+
+        /* ── Diff table ───────────────────────────────────────── */
+        .diff-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 12.5px;
+            line-height: 1.65;
+        }
+        .diff-table tr { vertical-align: top; }
+
+        /* line numbers */
+        .ln {
+            width: 52px; min-width: 52px;
+            text-align: right;
+            padding: 1px 8px;
+            user-select: none;
+            font-size: 11px;
+            color: #94a3b8;
+            border-right: 1px solid #e2e8f0;
+            white-space: nowrap;
+        }
+        /* code cells */
+        .code {
+            padding: 1px 14px 1px 10px;
+            white-space: pre;
+            color: #1e293b;
+        }
+
+        /* ── Row types ──────────────────────────────────────────── */
+        /* same */
+        .row-same:hover td { background: #f8fafc !important; }
+
+        /* removed  (left only) */
+        .ln-del   { background: #ffd7d5; color: #8b0000 !important; border-right-color: #fbb; }
+        .code-del { background: #ffeef0; color: #800000; }
+
+        /* added (right only) */
+        .ln-ins   { background: #ccffd8; color: #004800 !important; border-right-color: #9de; }
+        .code-ins { background: #e6ffec; color: #004000; }
+
+        /* empty placeholder */
+        .ln-empty { background: #efefef; border-right-color: #ddd; }
+        .code-empty {
+            background: repeating-linear-gradient(
+                -45deg,
+                #e8e8e8 0px, #e8e8e8 2px,
+                #f0f0f0 2px, #f0f0f0 8px
+            );
+        }
+
+        /* inline char highlights */
+        .code-del mark  { background: #ffb3b3; border-radius: 2px; color: inherit; }
+        .code-ins mark  { background: #82f0a4; border-radius: 2px; color: inherit; }
+
+        /* ── Scroll sync container ─────────────────────────────── */
+        #diff-left, #diff-right {
+            overflow: auto;
+            flex: 1 1 0;
+            min-width: 0;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+
+<!-- Back Button -->
+<a href="index.html" class="fixed top-4 left-4 text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 group z-10">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+    </svg>
+    <span class="font-medium">Trang chủ</span>
+</a>
+
+<div class="max-w-7xl mx-auto pt-10">
+
+    <!-- Header -->
+    <header class="text-center mb-6">
+        <h1 class="text-3xl font-extrabold text-slate-800 mb-1">JSON Compare</h1>
+        <p class="text-slate-500 text-sm">So sánh hai JSON theo dạng side-by-side · Hỗ trợ paste và upload file</p>
+    </header>
+
+    <!-- ── Input Section ─────────────────────────────────────── -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+
+        <!-- JSON A -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-indigo-600 px-4 py-2.5 flex items-center justify-between">
+                <h2 class="text-white font-semibold text-sm flex items-center space-x-2">
+                    <span class="bg-white text-indigo-600 text-xs font-extrabold px-2 py-0.5 rounded">A</span>
+                    <span>JSON gốc</span>
+                </h2>
+                <div class="flex items-center space-x-3">
+                    <span id="status-a" class="text-xs"></span>
+                    <button onclick="formatPanel('a')" class="text-indigo-200 hover:text-white text-xs transition-colors">Format</button>
+                    <button onclick="clearPanel('a')" class="text-indigo-200 hover:text-white text-xs transition-colors">Xoá</button>
+                    <label class="cursor-pointer text-indigo-200 hover:text-white text-xs transition-colors flex items-center space-x-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>Chọn file</span>
+                        <input type="file" accept=".json,application/json,text/plain" class="hidden" onchange="loadFile(event,'a')">
+                    </label>
+                </div>
+            </div>
+            <div class="relative">
+                <textarea id="input-a" class="json-input w-full h-56 p-3 text-slate-700 resize-none outline-none border-0 focus:ring-0"
+                    placeholder="Dán JSON vào đây hoặc kéo thả file..."
+                    oninput="validatePanel('a')"
+                    ondragover="handleDragOver(event,'a')"
+                    ondragleave="handleDragLeave(event,'a')"
+                    ondrop="handleDrop(event,'a')"></textarea>
+                <div id="drop-overlay-a" class="hidden absolute inset-0 bg-indigo-50 border-2 border-dashed border-indigo-400 rounded-b-xl flex items-center justify-center text-indigo-600 font-semibold text-sm pointer-events-none">
+                    Thả file JSON vào đây
+                </div>
+            </div>
+            <div id="error-a" class="hidden px-3 py-2 bg-red-50 text-red-600 text-xs border-t border-red-100 font-mono"></div>
+        </div>
+
+        <!-- JSON B -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-pink-600 px-4 py-2.5 flex items-center justify-between">
+                <h2 class="text-white font-semibold text-sm flex items-center space-x-2">
+                    <span class="bg-white text-pink-600 text-xs font-extrabold px-2 py-0.5 rounded">B</span>
+                    <span>JSON so sánh</span>
+                </h2>
+                <div class="flex items-center space-x-3">
+                    <span id="status-b" class="text-xs"></span>
+                    <button onclick="formatPanel('b')" class="text-pink-200 hover:text-white text-xs transition-colors">Format</button>
+                    <button onclick="clearPanel('b')" class="text-pink-200 hover:text-white text-xs transition-colors">Xoá</button>
+                    <label class="cursor-pointer text-pink-200 hover:text-white text-xs transition-colors flex items-center space-x-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                        </svg>
+                        <span>Chọn file</span>
+                        <input type="file" accept=".json,application/json,text/plain" class="hidden" onchange="loadFile(event,'b')">
+                    </label>
+                </div>
+            </div>
+            <div class="relative">
+                <textarea id="input-b" class="json-input w-full h-56 p-3 text-slate-700 resize-none outline-none border-0 focus:ring-0"
+                    placeholder="Dán JSON vào đây hoặc kéo thả file..."
+                    oninput="validatePanel('b')"
+                    ondragover="handleDragOver(event,'b')"
+                    ondragleave="handleDragLeave(event,'b')"
+                    ondrop="handleDrop(event,'b')"></textarea>
+                <div id="drop-overlay-b" class="hidden absolute inset-0 bg-pink-50 border-2 border-dashed border-pink-400 rounded-b-xl flex items-center justify-center text-pink-600 font-semibold text-sm pointer-events-none">
+                    Thả file JSON vào đây
+                </div>
+            </div>
+            <div id="error-b" class="hidden px-3 py-2 bg-red-50 text-red-600 text-xs border-t border-red-100 font-mono"></div>
+        </div>
+    </div>
+
+    <!-- ── Action Bar ─────────────────────────────────────────── -->
+    <div class="flex items-center justify-center gap-3 mb-6">
+        <button onclick="swapPanels()"
+            class="bg-white border border-slate-300 hover:border-slate-400 text-slate-600 hover:text-slate-800 font-medium py-2.5 px-4 rounded-xl transition-all active:scale-95 flex items-center space-x-2 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+            </svg>
+            <span>Hoán đổi</span>
+        </button>
+
+        <button onclick="compare()"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 px-8 rounded-xl shadow-lg transform active:scale-95 transition-all duration-200 flex items-center space-x-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+            </svg>
+            <span>So Sánh</span>
+        </button>
+
+        <button onclick="formatBoth()"
+            class="bg-white border border-slate-300 hover:border-slate-400 text-slate-600 hover:text-slate-800 font-medium py-2.5 px-4 rounded-xl transition-all active:scale-95 flex items-center space-x-2 shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
+            </svg>
+            <span>Format cả hai</span>
+        </button>
+    </div>
+
+    <div id="compare-error" class="hidden mb-4 bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm text-center"></div>
+
+    <!-- ── Results ────────────────────────────────────────────── -->
+    <div id="results" class="hidden space-y-4">
+
+        <!-- Summary -->
+        <div id="summary" class="grid grid-cols-2 md:grid-cols-4 gap-3"></div>
+
+        <!-- Side-by-side Diff Viewer -->
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+
+            <!-- Toolbar -->
+            <div class="flex items-center justify-between px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex-wrap gap-2">
+                <div class="flex items-center space-x-4 text-xs text-slate-500">
+                    <span class="flex items-center space-x-1.5">
+                        <span class="inline-block w-3 h-3 rounded-sm bg-red-200 border border-red-300"></span>
+                        <span>Xoá / thay đổi (A)</span>
+                    </span>
+                    <span class="flex items-center space-x-1.5">
+                        <span class="inline-block w-3 h-3 rounded-sm bg-green-200 border border-green-300"></span>
+                        <span>Thêm / thay đổi (B)</span>
+                    </span>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <label class="flex items-center space-x-2 text-sm text-slate-600 cursor-pointer select-none">
+                        <input type="checkbox" id="hide-same" onchange="toggleSame()" class="rounded border-slate-300 text-indigo-600 cursor-pointer">
+                        <span>Ẩn dòng giống nhau</span>
+                    </label>
+                    <button onclick="copyDiff(event)"
+                        class="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center space-x-1 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                        <span id="copy-btn-label">Copy diff</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Panel headers -->
+            <div class="flex border-b border-slate-200 text-xs font-semibold">
+                <div class="flex-1 min-w-0 px-3 py-2 bg-indigo-50 text-indigo-700 flex items-center space-x-2 border-r border-slate-200">
+                    <span class="bg-indigo-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">A</span>
+                    <span id="label-a">JSON gốc</span>
+                </div>
+                <div class="flex-1 min-w-0 px-3 py-2 bg-pink-50 text-pink-700 flex items-center space-x-2">
+                    <span class="bg-pink-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">B</span>
+                    <span id="label-b">JSON so sánh</span>
+                </div>
+            </div>
+
+            <!-- The two scrollable panels -->
+            <div class="flex" style="max-height: 68vh;">
+                <!-- Left -->
+                <div id="diff-left" class="border-r border-slate-200">
+                    <table class="diff-table" id="table-left"><tbody id="tbody-left"></tbody></table>
+                </div>
+                <!-- Right -->
+                <div id="diff-right">
+                    <table class="diff-table" id="table-right"><tbody id="tbody-right"></tbody></table>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="mt-10 text-center text-sm text-slate-400">
+        <p>JSON Compare · <a href="index.html" class="hover:text-slate-600 transition-colors">Dev Tools Collection</a></p>
+    </footer>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// Input helpers
+// ═══════════════════════════════════════════════════════════
+
+function validatePanel(side) {
+    const input = document.getElementById(`input-${side}`).value.trim();
+    const errorEl = document.getElementById(`error-${side}`);
+    const statusEl = document.getElementById(`status-${side}`);
+    if (!input) { errorEl.classList.add('hidden'); statusEl.innerHTML = ''; return null; }
+    try {
+        const parsed = JSON.parse(input);
+        errorEl.classList.add('hidden');
+        statusEl.innerHTML = `<span class="${side === 'a' ? 'text-green-300' : 'text-green-300'} font-medium">✓ hợp lệ</span>`;
+        return parsed;
+    } catch (e) {
+        errorEl.textContent = `Lỗi: ${e.message}`;
+        errorEl.classList.remove('hidden');
+        statusEl.innerHTML = `<span class="text-red-300 font-medium">✗ không hợp lệ</span>`;
+        return null;
+    }
+}
+
+function clearPanel(side) {
+    document.getElementById(`input-${side}`).value = '';
+    document.getElementById(`error-${side}`).classList.add('hidden');
+    document.getElementById(`status-${side}`).innerHTML = '';
+}
+
+function formatPanel(side) {
+    const el = document.getElementById(`input-${side}`);
+    if (!el.value.trim()) return;
+    try { el.value = JSON.stringify(JSON.parse(el.value), null, 2); validatePanel(side); } catch (e) {}
+}
+
+function formatBoth() { formatPanel('a'); formatPanel('b'); }
+
+function loadFile(event, side) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => { document.getElementById(`input-${side}`).value = e.target.result; validatePanel(side); };
+    reader.readAsText(file);
+    event.target.value = '';
+    document.getElementById(`label-${side}`).textContent = file.name;
+}
+
+function handleDragOver(e, side) { e.preventDefault(); document.getElementById(`drop-overlay-${side}`).classList.remove('hidden'); }
+function handleDragLeave(e, side) { document.getElementById(`drop-overlay-${side}`).classList.add('hidden'); }
+function handleDrop(e, side) {
+    e.preventDefault();
+    document.getElementById(`drop-overlay-${side}`).classList.add('hidden');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => { document.getElementById(`input-${side}`).value = ev.target.result; validatePanel(side); };
+    reader.readAsText(file);
+    document.getElementById(`label-${side}`).textContent = file.name;
+}
+
+function swapPanels() {
+    const a = document.getElementById('input-a'), b = document.getElementById('input-b');
+    [a.value, b.value] = [b.value, a.value];
+    const la = document.getElementById('label-a').textContent, lb = document.getElementById('label-b').textContent;
+    document.getElementById('label-a').textContent = lb;
+    document.getElementById('label-b').textContent = la;
+    validatePanel('a'); validatePanel('b');
+}
+
+// ═══════════════════════════════════════════════════════════
+// Diff algorithm  (LCS line-based)
+// ═══════════════════════════════════════════════════════════
+
+function computeLineDiff(linesA, linesB) {
+    const m = linesA.length, n = linesB.length;
+    // O(m*n) LCS with Int32Array
+    const dp = [];
+    for (let i = 0; i <= m; i++) dp[i] = new Int32Array(n + 1);
+    for (let i = 1; i <= m; i++)
+        for (let j = 1; j <= n; j++)
+            dp[i][j] = linesA[i-1] === linesB[j-1]
+                ? dp[i-1][j-1] + 1
+                : Math.max(dp[i-1][j], dp[i][j-1]);
+
+    // Backtrack
+    const ops = [];
+    let i = m, j = n;
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && linesA[i-1] === linesB[j-1]) {
+            ops.unshift({ type: 'same', a: linesA[i-1], b: linesB[j-1] });
+            i--; j--;
+        } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+            ops.unshift({ type: 'ins', b: linesB[j-1] });
+            j--;
+        } else {
+            ops.unshift({ type: 'del', a: linesA[i-1] });
+            i--;
+        }
+    }
+    return ops;
+}
+
+// Pair adjacent del/ins blocks into aligned rows (VSCode style)
+function buildRows(ops) {
+    const rows = [];
+    let i = 0;
+    while (i < ops.length) {
+        if (ops[i].type === 'same') {
+            rows.push({ type: 'same', a: ops[i].a, b: ops[i].b });
+            i++;
+        } else {
+            const dels = [], ins = [];
+            while (i < ops.length && ops[i].type !== 'same') {
+                if (ops[i].type === 'del') dels.push(ops[i].a);
+                else ins.push(ops[i].b);
+                i++;
+            }
+            const len = Math.max(dels.length, ins.length);
+            for (let k = 0; k < len; k++) {
+                const hA = k < dels.length, hB = k < ins.length;
+                if (hA && hB)      rows.push({ type: 'changed', a: dels[k], b: ins[k] });
+                else if (hA)       rows.push({ type: 'removed', a: dels[k] });
+                else               rows.push({ type: 'added',   b: ins[k]  });
+            }
+        }
+    }
+    return rows;
+}
+
+// Inline char-level diff for "changed" lines
+function inlineDiff(strA, strB) {
+    let s = 0;
+    const minLen = Math.min(strA.length, strB.length);
+    while (s < minLen && strA[s] === strB[s]) s++;
+    let eA = strA.length, eB = strB.length;
+    while (eA > s && eB > s && strA[eA-1] === strB[eB-1]) { eA--; eB--; }
+    return {
+        aHtml: esc(strA.slice(0, s))
+            + (eA > s ? `<mark>${esc(strA.slice(s, eA))}</mark>` : '')
+            + esc(strA.slice(eA)),
+        bHtml: esc(strB.slice(0, s))
+            + (eB > s ? `<mark>${esc(strB.slice(s, eB))}</mark>` : '')
+            + esc(strB.slice(eB)),
+    };
+}
+
+function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+const STRIPE = 'background:repeating-linear-gradient(-45deg,#e4e4e4 0,#e4e4e4 2px,#efefef 2px,#efefef 8px)';
+
+// ═══════════════════════════════════════════════════════════
+// Render
+// ═══════════════════════════════════════════════════════════
+
+function renderTables(rows) {
+    let leftHtml = '', rightHtml = '';
+    let lnA = 0, lnB = 0;
+    const stats = { added: 0, removed: 0, changed: 0, same: 0 };
+
+    for (const row of rows) {
+        if (row.type === 'same') {
+            lnA++; lnB++;
+            stats.same++;
+            const text = esc(row.a);
+            leftHtml  += `<tr class="row-same"><td class="ln">${lnA}</td><td class="code">${text}</td></tr>`;
+            rightHtml += `<tr class="row-same"><td class="ln">${lnB}</td><td class="code">${text}</td></tr>`;
+
+        } else if (row.type === 'removed') {
+            lnA++;
+            stats.removed++;
+            leftHtml  += `<tr><td class="ln ln-del">${lnA}</td><td class="code code-del">${esc(row.a)}</td></tr>`;
+            rightHtml += `<tr><td class="ln ln-empty"></td><td class="code code-empty" style="${STRIPE}"> </td></tr>`;
+
+        } else if (row.type === 'added') {
+            lnB++;
+            stats.added++;
+            leftHtml  += `<tr><td class="ln ln-empty"></td><td class="code code-empty" style="${STRIPE}"> </td></tr>`;
+            rightHtml += `<tr><td class="ln ln-ins">${lnB}</td><td class="code code-ins">${esc(row.b)}</td></tr>`;
+
+        } else { // changed
+            lnA++; lnB++;
+            stats.changed++;
+            const { aHtml, bHtml } = inlineDiff(row.a, row.b);
+            leftHtml  += `<tr><td class="ln ln-del">${lnA}</td><td class="code code-del">${aHtml}</td></tr>`;
+            rightHtml += `<tr><td class="ln ln-ins">${lnB}</td><td class="code code-ins">${bHtml}</td></tr>`;
+        }
+    }
+    return { leftHtml, rightHtml, stats };
+}
+
+// ═══════════════════════════════════════════════════════════
+// Compare entry point
+// ═══════════════════════════════════════════════════════════
+
+function compare() {
+    const rawA = document.getElementById('input-a').value.trim();
+    const rawB = document.getElementById('input-b').value.trim();
+    const errEl = document.getElementById('compare-error');
+    const results = document.getElementById('results');
+    errEl.classList.add('hidden');
+
+    if (!rawA || !rawB) {
+        errEl.textContent = 'Vui lòng nhập JSON vào cả hai ô trước khi so sánh.';
+        errEl.classList.remove('hidden');
+        results.classList.add('hidden');
+        return;
+    }
+
+    let jsonA, jsonB;
+    try { jsonA = JSON.parse(rawA); } catch (e) {
+        errEl.textContent = `JSON A không hợp lệ: ${e.message}`; errEl.classList.remove('hidden'); results.classList.add('hidden'); return;
+    }
+    try { jsonB = JSON.parse(rawB); } catch (e) {
+        errEl.textContent = `JSON B không hợp lệ: ${e.message}`; errEl.classList.remove('hidden'); results.classList.add('hidden'); return;
+    }
+
+    // Normalise to pretty-printed lines
+    const linesA = JSON.stringify(jsonA, null, 2).split('\n');
+    const linesB = JSON.stringify(jsonB, null, 2).split('\n');
+
+    const ops  = computeLineDiff(linesA, linesB);
+    const rows = buildRows(ops);
+    const { leftHtml, rightHtml, stats } = renderTables(rows);
+
+    document.getElementById('tbody-left').innerHTML  = leftHtml  || '<tr><td></td><td></td></tr>';
+    document.getElementById('tbody-right').innerHTML = rightHtml || '<tr><td></td><td></td></tr>';
+
+    // Summary
+    document.getElementById('summary').innerHTML = `
+        <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+            <div class="text-3xl font-extrabold text-green-700">${stats.added}</div>
+            <div class="text-xs text-green-600 font-semibold uppercase tracking-wide mt-1">Dòng thêm <span class="font-bold">(+)</span></div>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-xl p-4 text-center">
+            <div class="text-3xl font-extrabold text-red-700">${stats.removed}</div>
+            <div class="text-xs text-red-600 font-semibold uppercase tracking-wide mt-1">Dòng xoá <span class="font-bold">(-)</span></div>
+        </div>
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-center">
+            <div class="text-3xl font-extrabold text-amber-700">${stats.changed}</div>
+            <div class="text-xs text-amber-600 font-semibold uppercase tracking-wide mt-1">Dòng thay đổi <span class="font-bold">(~)</span></div>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+            <div class="text-3xl font-extrabold text-slate-700">${stats.same}</div>
+            <div class="text-xs text-slate-500 font-semibold uppercase tracking-wide mt-1">Dòng giống nhau <span class="font-bold">(=)</span></div>
+        </div>`;
+
+    results.classList.remove('hidden');
+    results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Re-apply hide-same if already checked
+    if (document.getElementById('hide-same').checked) applyHideSame(true);
+
+    // Notify if identical
+    if (stats.added === 0 && stats.removed === 0 && stats.changed === 0) {
+        document.getElementById('tbody-left').innerHTML =
+        document.getElementById('tbody-right').innerHTML =
+            `<tr><td colspan="2" class="p-10 text-center text-slate-400 text-base" style="white-space:normal">
+                ✓ &nbsp; Hai JSON hoàn toàn giống nhau
+            </td></tr>`;
+    }
+}
+
+// ═══════════════════════════════════════════════════════════
+// Scroll sync (vertical only)
+// ═══════════════════════════════════════════════════════════
+
+let _syncing = false;
+function syncScroll(src) {
+    if (_syncing) return;
+    _syncing = true;
+    const other = src === 'diff-left' ? 'diff-right' : 'diff-left';
+    document.getElementById(other).scrollTop = document.getElementById(src).scrollTop;
+    _syncing = false;
+}
+document.getElementById('diff-left').addEventListener('scroll',  () => syncScroll('diff-left'));
+document.getElementById('diff-right').addEventListener('scroll', () => syncScroll('diff-right'));
+
+// ═══════════════════════════════════════════════════════════
+// Toolbar actions
+// ═══════════════════════════════════════════════════════════
+
+function toggleSame() { applyHideSame(document.getElementById('hide-same').checked); }
+
+function applyHideSame(hide) {
+    const action = hide ? 'none' : '';
+    document.querySelectorAll('#tbody-left  tr.row-same, #tbody-right tr.row-same').forEach(r => r.style.display = action);
+}
+
+function copyDiff(e) {
+    const rowsL = document.querySelectorAll('#tbody-left tr');
+    const rowsR = document.querySelectorAll('#tbody-right tr');
+    const lines = [];
+    rowsL.forEach((tr, idx) => {
+        const codeL = tr.querySelector('.code')?.innerText ?? '';
+        const codeR = rowsR[idx]?.querySelector('.code')?.innerText ?? '';
+        const isRem = tr.querySelector('.code-del'), isIns = rowsR[idx]?.querySelector('.code-ins');
+        if (isRem && !isIns) lines.push(`- ${codeL}`);
+        else if (!isRem && isIns) lines.push(`+ ${codeR}`);
+        else if (isRem && isIns) { lines.push(`- ${codeL}`); lines.push(`+ ${codeR}`); }
+        else lines.push(`  ${codeL}`);
+    });
+    navigator.clipboard.writeText(lines.join('\n')).then(() => {
+        const lbl = document.getElementById('copy-btn-label');
+        lbl.textContent = 'Đã copy!';
+        setTimeout(() => lbl.textContent = 'Copy diff', 2000);
+    });
+}
+
+// Ctrl/Cmd+Enter
+document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') compare(); });
+</script>
+</body>
+</html>
