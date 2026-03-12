@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Medigo API Tester — V1 vs V2</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #222638;
+      --border: #2e3347;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --v1: #f59e0b;
+      --v1-light: rgba(245,158,11,0.12);
+      --v2: #3b82f6;
+      --v2-light: rgba(59,130,246,0.12);
+      --success: #22c55e;
+      --danger: #ef4444;
+      --radius: 10px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── HEADER ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    header h1 { font-size: 18px; font-weight: 700; }
+    header h1 span { color: var(--v2); }
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+    .badge-v1 { background: var(--v1-light); color: var(--v1); border: 1px solid var(--v1); }
+    .badge-v2 { background: var(--v2-light); color: var(--v2); border: 1px solid var(--v2); }
+
+    /* ── LAYOUT ── */
+    .workspace {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      height: calc(100vh - 57px);
+    }
+    .panel {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border-right: 1px solid var(--border);
+    }
+    .panel:last-child { border-right: none; }
+
+    /* ── PANEL HEADER ── */
+    .panel-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .panel-v1 .panel-header { background: var(--v1-light); }
+    .panel-v2 .panel-header { background: var(--v2-light); }
+    .panel-title { font-weight: 700; font-size: 15px; }
+    .panel-v1 .panel-title { color: var(--v1); }
+    .panel-v2 .panel-title { color: var(--v2); }
+    .panel-url {
+      font-size: 11px;
+      color: var(--muted);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      margin-left: auto;
+      max-width: 260px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── CONFIG ── */
+    .config {
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      overflow: hidden;
+      transition: max-height .25s ease;
+    }
+    .config.collapsed { max-height: 0 !important; border-bottom: none; }
+    .config-inner { padding: 14px 18px; }
+    .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 11px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+    .field input, .field select, .field textarea {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--v2); }
+    .field textarea { resize: vertical; min-height: 60px; font-size: 11px; line-height: 1.5; }
+    .field-full { grid-column: 1 / -1; }
+
+    .config-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .btn-run {
+      flex: 1;
+      padding: 9px 0;
+      border: none;
+      border-radius: 7px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      letter-spacing: .3px;
+    }
+    .btn-run:active { transform: scale(.98); }
+    .btn-run:disabled { opacity: .5; cursor: not-allowed; }
+    .panel-v1 .btn-run { background: var(--v1); color: #000; }
+    .panel-v2 .btn-run { background: var(--v2); color: #fff; }
+
+    /* ── CONFIG TOGGLE ── */
+    .config-toggle {
+      padding: 5px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 12px;
+      color: var(--muted);
+      transition: background .15s;
+    }
+    .config-toggle:hover { background: var(--border); color: var(--text); }
+    .toggle-arrow { transition: transform .2s; font-size: 10px; }
+    .toggle-arrow.open { transform: rotate(180deg); }
+    .toggle-summary { margin-left: auto; font-family: monospace; font-size: 11px; }
+
+    /* ── STATUS BAR ── */
+    .status-bar {
+      padding: 6px 18px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface2);
+      flex-shrink: 0;
+      min-height: 32px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .dot-idle { background: var(--muted); }
+    .dot-loading { background: var(--v2); animation: pulse 1s infinite; }
+    .dot-ok { background: var(--success); }
+    .dot-err { background: var(--danger); }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .status-text { color: var(--muted); }
+    .status-ok { color: var(--success); }
+    .status-err { color: var(--danger); }
+    .status-meta { margin-left: auto; color: var(--muted); font-family: monospace; }
+
+    /* ── RESULTS ── */
+    .results {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 16px;
+      scroll-behavior: smooth;
+    }
+    .results::-webkit-scrollbar { width: 6px; }
+    .results::-webkit-scrollbar-track { background: transparent; }
+    .results::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+    .results::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+    .empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 8px;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 36px; opacity: .4; }
+
+    /* ── VIEW TOGGLE ── */
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+    }
+    .btn-view {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 3px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      transition: background .15s, color .15s;
+    }
+    .btn-view.active, .btn-view:hover { background: var(--border); color: var(--text); }
+
+    /* ── PRODUCT LIST (default) ── */
+    .product-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .product-row {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 12px;
+      transition: border-color .15s, background .15s;
+      cursor: default;
+    }
+    .product-row:hover { border-color: var(--v2); background: var(--surface2); }
+    .product-row.highlight { border-color: var(--success); }
+    .product-row.highlight .row-index { color: var(--success); }
+
+    .row-index {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      min-width: 20px;
+      padding-top: 2px;
+      text-align: right;
+      font-family: monospace;
+    }
+
+    .row-thumb {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      object-fit: cover;
+      flex-shrink: 0;
+      background: var(--surface2);
+      display: block;
+    }
+    .row-thumb-placeholder {
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      background: var(--surface2);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: var(--border);
+    }
+
+    .row-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+
+    .row-name {
+      font-size: 13px;
+      font-weight: 600;
+      line-height: 1.45;
+      color: var(--text);
+    }
+
+    .row-price-row { display: flex; align-items: baseline; gap: 8px; }
+    .row-price {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--success);
+    }
+    .row-price-range {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .row-price-original {
+      font-size: 12px;
+      color: var(--muted);
+      text-decoration: line-through;
+    }
+    .row-price-discount {
+      font-size: 11px;
+      background: rgba(239,68,68,.15);
+      color: #f87171;
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    .row-meta { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .tag {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--surface2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .tag-pkg {
+      background: rgba(59,130,246,.1);
+      border-color: rgba(59,130,246,.3);
+      color: #93c5fd;
+    }
+    .tag-l1 {
+      background: rgba(168,85,247,.1);
+      border-color: rgba(168,85,247,.3);
+      color: #c084fc;
+    }
+    .tag-l2 {
+      background: rgba(20,184,166,.1);
+      border-color: rgba(20,184,166,.3);
+      color: #5eead4;
+    }
+    .tag-l3 {
+      background: rgba(245,158,11,.08);
+      border-color: rgba(245,158,11,.25);
+      color: #fcd34d;
+    }
+
+    .row-bottom { display: flex; gap: 12px; align-items: center; }
+    .row-sold { font-size: 11px; color: var(--muted); }
+    .row-sold b { color: var(--v1); }
+    .row-pharmacy { font-size: 11px; color: var(--muted); }
+    .row-count { font-size: 11px; color: var(--muted); }
+    .row-count b { color: #a78bfa; }
+
+    /* ── PRODUCT GRID (alternate) ── */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .product-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      transition: border-color .15s, transform .1s;
+      cursor: default;
+    }
+    .product-card:hover { border-color: var(--v2); transform: translateY(-2px); }
+    .product-card.highlight { border-color: var(--success); }
+    .card-img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      background: var(--surface2);
+      display: block;
+    }
+    .card-img-placeholder {
+      width: 100%;
+      aspect-ratio: 1;
+      background: var(--surface2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      color: var(--border);
+    }
+    .card-body { padding: 10px; }
+    .card-name {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .card-price { font-size: 13px; font-weight: 700; color: var(--success); }
+    .card-meta { margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .card-sold { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .card-sold span { color: var(--v1); font-weight: 600; }
+
+    /* ── PAGINATION ── */
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 0 4px;
+    }
+    .page-info { font-size: 12px; color: var(--muted); }
+    .btn-page {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 5px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background .15s;
+    }
+    .btn-page:hover:not(:disabled) { background: var(--border); }
+    .btn-page:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── OVERLAP BADGE ── */
+    .overlap-note {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      background: rgba(34,197,94,.08);
+      border: 1px solid rgba(34,197,94,.25);
+      border-radius: 7px;
+      font-size: 12px;
+      color: var(--success);
+    }
+
+    /* ── SPINNER ── */
+    .spinner {
+      display: inline-block;
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--v2);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Medigo <span>API Tester</span></h1>
+  <span class="badge badge-v2">V2 New</span>
+  <span style="color:var(--muted)">vs</span>
+  <span class="badge badge-v1">V1 Old</span>
+  <span id="overlap-header" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
+</header>
+
+<div class="workspace">
+
+  <!-- ════════════════ V2 PANEL ════════════════ -->
+  <div class="panel panel-v2">
+    <div class="panel-header">
+      <span class="badge badge-v2">V2</span>
+      <span class="panel-title">New API</span>
+      <span class="panel-url">POST /v1/products</span>
+      <div class="view-toggle">
+        <button class="btn-view active" id="v2-view-list" onclick="setView('v2','list')" title="List view">☰</button>
+        <button class="btn-view" id="v2-view-grid" onclick="setView('v2','grid')" title="Grid view">⊞</button>
+      </div>
+    </div>
+
+    <div class="config-toggle" onclick="toggleConfig('v2')">
+      <span class="toggle-arrow open" id="v2-toggle-arrow">▼</span>
+      <span>Cấu hình request</span>
+      <span class="toggle-summary" id="v2-toggle-summary">page=1 · limit=12 · recommended</span>
+    </div>
+
+    <div class="config" id="v2-config">
+      <div class="config-inner">
+        <div class="config-grid">
+          <div class="field">
+            <label>Base URL</label>
+            <input id="v2-base-url" value="http://c.localhost" />
+          </div>
+          <div class="field">
+            <label>Endpoint</label>
+            <input id="v2-endpoint" value="/v1/products" />
+          </div>
+          <div class="field">
+            <label>Page</label>
+            <input id="v2-page" type="number" value="1" min="1" />
+          </div>
+          <div class="field">
+            <label>Limit</label>
+            <input id="v2-limit" type="number" value="12" min="1" max="100" />
+          </div>
+          <div class="field">
+            <label>Sort</label>
+            <select id="v2-sort">
+              <option value="default">default</option>
+              <option value="price_asc">price_asc</option>
+              <option value="price_desc">price_desc</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>List Type</label>
+            <select id="v2-list-type">
+              <option value="recommended">recommended</option>
+              <option value="top_seller">top_seller</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Lat</label>
+            <input id="v2-lat" type="number" step="any" value="10.7769" />
+          </div>
+          <div class="field">
+            <label>Lng</label>
+            <input id="v2-lng" type="number" step="any" value="106.7009" />
+          </div>
+          <div class="field field-full">
+            <label>Extra Headers (JSON)</label>
+            <textarea id="v2-headers" rows="2">{}</textarea>
+          </div>
+        </div>
+        <div class="config-actions">
+          <button class="btn-run" id="v2-run-btn" onclick="runV2()">▶ Run V2</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="v2-status">
+      <div class="dot dot-idle"></div>
+      <span class="status-text">Ready</span>
+    </div>
+
+    <div class="results" id="v2-results">
+      <div class="empty">
+        <div class="empty-icon">🔵</div>
+        <div>Click <b>Run V2</b> to fetch products</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ V1 PANEL ════════════════ -->
+  <div class="panel panel-v1">
+    <div class="panel-header">
+      <span class="badge badge-v1">V1</span>
+      <span class="panel-title">Old API (Production)</span>
+      <span class="panel-url">POST /recommend/products-v2</span>
+      <div class="view-toggle">
+        <button class="btn-view active" id="v1-view-list" onclick="setView('v1','list')" title="List view">☰</button>
+        <button class="btn-view" id="v1-view-grid" onclick="setView('v1','grid')" title="Grid view">⊞</button>
+      </div>
+    </div>
+
+    <div class="config-toggle" onclick="toggleConfig('v1')">
+      <span class="toggle-arrow open" id="v1-toggle-arrow">▼</span>
+      <span>Cấu hình request</span>
+      <span class="toggle-summary" id="v1-toggle-summary">offset=0 · limit=12 · TOP_SELLER</span>
+    </div>
+
+    <div class="config" id="v1-config">
+      <div class="config-inner">
+        <div class="config-grid">
+          <div class="field field-full">
+            <label>Base URL</label>
+            <input id="v1-base-url" value="https://production-api.medigoapp.com" />
+          </div>
+          <div class="field field-full">
+            <label>Endpoint</label>
+            <input id="v1-endpoint" value="/recommend/products-v2" />
+          </div>
+          <div class="field">
+            <label>Offset</label>
+            <input id="v1-offset" type="number" value="0" min="0" />
+          </div>
+          <div class="field">
+            <label>Limit</label>
+            <input id="v1-limit" type="number" value="12" min="1" max="100" />
+          </div>
+          <div class="field field-full">
+            <label>Type</label>
+            <select id="v1-type">
+              <option value="TOP_SELLER_IN_COMMON">TOP_SELLER_IN_COMMON</option>
+              <option value="RECOMMENDED">RECOMMENDED</option>
+            </select>
+          </div>
+          <div class="field field-full">
+            <label>Authorization Bearer Token</label>
+            <textarea id="v1-token" rows="2" placeholder="Paste JWT token here (without 'Bearer ' prefix)">eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJtQ3JlYXRlZCI6IjIwMjUtMDctMTZUMDM6NDA6MjcuMDAwWiIsIm1JZCI6NzE3NTMzLCJtSXNEZXYiOmZhbHNlLCJtVGVsTnVtYmVyIjoiKzg0ODc2MTEyOTE0IiwibVVzZXJBZ2VudCI6Ik1lZGlnby1Vc2VyLzEyLjkuNyAoY29tLm1lZGlnby51c2VyOyBidWlsZDoxOyBpT1MgMTguMy4xOyBpUGhvbmUxNCw1OyBpUGhvbmUgMTMpIFJOMC44MCIsIm1Vc2VyV2ViQWdlbnQiOiJNb3ppbGxhLzUuMCAoTWFjaW50b3NoOyBJbnRlbCBNYWMgT1MgWCAxMF8xNV83KSBBcHBsZVdlYktpdC81MzcuMzYgKEtIVE1MLCBsaWtlIEdlY2tvKSBDaHJvbWUvMTQ0LjAuMC4wIFNhZmFyaS81MzcuMzYiLCJtUHVibnViQ2hhbm5lbCI6IlVTRVJfNzE3NTMzIiwibUxhc3RGZXRjaERiIjoiMjAyNi0wMy0wNlQwNzozODoxNi4wMjlaIiwibUZjbVRva2VuIjoiZnl5a2FYX2t1RXFDaVBNaEdsclczaTpBUEE5MWJHb3gtOHZNMU1ZR0JsRlpRdzY0bGRwc1hWM1FrVW9HbVFEMWM0THFJRTJNV0h5NGhBdTgwd3RvWFlxaWEtSlFuYmkyVi01ZUpmSVU1Q1ltSXVvS2pkSUpMVmZRY0lxRG00emllcVBZOE9JYi1FdWRQVSIsIm1EaXNwbGF5TmFtZSI6Ik5ow6JuIFRow6FpIDEyMyIsIm1TdHJpbmdlZUlkIjoiVVNFUl84NDg3NjExMjkxNCIsIm1UeXBlIjoiQ1JFQVRFRF9CWV9BRE1JTiIsIm1DdXJyZW50RGV2aWNlSWQiOiJBeHVhX0dWcGJMWTd5bk9fS3NaQiIsImlhdCI6MTc3Mjc4MjY5NiwiZXhwIjoyMDg4MzU4Njk2fQ.LvkY6q8CSyvGI-HqpNtMGNuQ9oBD2jwYVqsskdytW0cnTietykjxQrMK7aIt099ro74FGzs2QFij91uckq_Smw</textarea>
+          </div>
+        </div>
+        <div class="config-actions">
+          <button class="btn-run" id="v1-run-btn" onclick="runV1()">▶ Run V1</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status-bar" id="v1-status">
+      <div class="dot dot-idle"></div>
+      <span class="status-text">Ready</span>
+    </div>
+
+    <div class="results" id="v1-results">
+      <div class="empty">
+        <div class="empty-icon">🟡</div>
+        <div>Click <b>Run V1</b> to fetch products</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────────────
+  const state = {
+    v2: { items: [], meta: null, page: 1, view: 'list' },
+    v1: { items: [], count: 0, offset: 0, view: 'list' }
+  };
+
+  // init config heights for animation
+  window.addEventListener('DOMContentLoaded', () => {
+    ['v2','v1'].forEach(v => {
+      const el = document.getElementById(`${v}-config`);
+      el.style.maxHeight = el.scrollHeight + 'px';
+    });
+  });
+
+  // ── Config toggle ───────────────────────────────────────────────────────
+  function toggleConfig(version) {
+    const cfg = document.getElementById(`${version}-config`);
+    const arrow = document.getElementById(`${version}-toggle-arrow`);
+    const isOpen = !cfg.classList.contains('collapsed');
+    if (isOpen) {
+      cfg.style.maxHeight = cfg.scrollHeight + 'px';
+      requestAnimationFrame(() => {
+        cfg.classList.add('collapsed');
+        arrow.classList.remove('open');
+      });
+    } else {
+      cfg.classList.remove('collapsed');
+      cfg.style.maxHeight = cfg.scrollHeight + 'px';
+      arrow.classList.add('open');
+    }
+  }
+
+  // ── View toggle ─────────────────────────────────────────────────────────
+  function setView(version, view) {
+    state[version].view = view;
+    document.getElementById(`${version}-view-list`).classList.toggle('active', view === 'list');
+    document.getElementById(`${version}-view-grid`).classList.toggle('active', view === 'grid');
+    if (state[version].items.length) {
+      const overlapIds = computeOverlap();
+      renderResults(version, state[version].items, overlapIds);
+    }
+  }
+
+  // ── Helpers ────────────────────────────────────────────────────────────
+  const fmt = (n) => new Intl.NumberFormat('vi-VN').format(n) + 'đ';
+
+  function setStatus(version, type, text, meta = '') {
+    const bar = document.getElementById(`${version}-status`);
+    const dotClass = { idle: 'dot-idle', loading: 'dot-loading', ok: 'dot-ok', error: 'dot-err' }[type];
+    const textClass = { ok: 'status-ok', error: 'status-err' }[type] || 'status-text';
+    bar.innerHTML = `
+      <div class="dot ${dotClass}"></div>
+      <span class="${textClass}">${text}</span>
+      <span class="status-meta">${meta}</span>
+    `;
+  }
+
+  function computeOverlap() {
+    if (!state.v2.items.length || !state.v1.items.length) return null;
+    const v2ids = new Set(state.v2.items.map(i => i.id));
+    const v1ids = new Set(state.v1.items.map(i => i.id));
+    return new Set([...v2ids].filter(id => v1ids.has(id)));
+  }
+
+  function renderOverlapBadge() {
+    const overlap = computeOverlap();
+    if (!overlap) return overlap;
+    const total = Math.min(state.v2.items.length, state.v1.items.length);
+    const pct = Math.round(overlap.size / total * 100);
+    document.getElementById('overlap-header').textContent =
+      `Overlap: ${overlap.size} sản phẩm trùng (${pct}%)`;
+    return overlap;
+  }
+
+  // ── Row builder (list view) ─────────────────────────────────────────────
+  function buildRow(item, version, idx, overlapIds) {
+    const pkg = version === 'v2' ? item.selectedPackage : item.selected_package;
+    const price = pkg?.price ?? 0;
+    const origPrice = pkg?.original_price ?? 0;
+    const minPrice = pkg?.min_price ?? 0;
+    const maxPrice = pkg?.max_price ?? 0;
+    const amountSold = pkg?.amount_sold ?? item.soldQuantity ?? 0;
+    const pharmacyId = pkg?.pharmacy_id;
+    const pkgName = pkg?.loai_dong_goi ?? '';
+    const countPharm = pkg?.countPharmaciesByPackage?.[0]?.count;
+
+    const tags1 = version === 'v2'
+      ? (item.tagsLevel1Details ?? []).map(t => t.name)
+      : (item.tags_level_1 ?? []);
+    const tags2 = version === 'v2'
+      ? (item.tagsLevel2Details ?? []).map(t => t.name)
+      : (item.tags_level_2 ?? []);
+    const tags3 = version === 'v2'
+      ? (item.tagsLevel3Details ?? []).map(t => t.name)
+      : (item.tags_level_3 ?? []);
+
+    const imgSrc = item.imageUrls?.[0];
+    const isOverlap = overlapIds?.has(item.id);
+
+    const discount = origPrice > price && origPrice > 0
+      ? Math.round((1 - price / origPrice) * 100) : 0;
+
+    const priceRange = minPrice && maxPrice && minPrice !== maxPrice && minPrice !== price
+      ? `<span class="row-price-range">${fmt(minPrice)} – ${fmt(maxPrice)}</span>` : '';
+
+    return `
+      <div class="product-row ${isOverlap ? 'highlight' : ''}">
+        <div class="row-index">${idx}</div>
+        ${imgSrc
+          ? `<img class="row-thumb" src="${imgSrc}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          : ''}
+        <div class="row-thumb-placeholder" ${imgSrc ? 'style="display:none"' : ''}>📦</div>
+        <div class="row-body">
+          <div class="row-name">${item.name}</div>
+          <div class="row-price-row">
+            <span class="row-price">${fmt(price)}</span>
+            ${origPrice > price && origPrice > 0 ? `<span class="row-price-original">${fmt(origPrice)}</span>` : ''}
+            ${discount >= 5 ? `<span class="row-price-discount">-${discount}%</span>` : ''}
+            ${priceRange}
+          </div>
+          <div class="row-meta">
+            ${pkgName ? `<span class="tag tag-pkg">${pkgName}</span>` : ''}
+            ${tags1.map(t => `<span class="tag tag-l1">${t}</span>`).join('')}
+            ${tags2.map(t => `<span class="tag tag-l2">${t}</span>`).join('')}
+            ${tags3.map(t => `<span class="tag tag-l3">${t}</span>`).join('')}
+          </div>
+          <div class="row-bottom">
+            ${amountSold > 0 ? `<span class="row-sold">Đã bán: <b>${amountSold.toLocaleString('vi-VN')}</b></span>` : ''}
+            ${countPharm ? `<span class="row-count">NTH: <b>${countPharm}</b></span>` : ''}
+            ${pharmacyId ? `<span class="row-pharmacy">· ID ${pharmacyId}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Card builder (grid view) ────────────────────────────────────────────
+  function buildCard(item, version, overlapIds) {
+    const pkg = version === 'v2' ? item.selectedPackage : item.selected_package;
+    const price = pkg?.price ?? 0;
+    const origPrice = pkg?.original_price ?? 0;
+    const amountSold = pkg?.amount_sold ?? item.soldQuantity ?? 0;
+    const pkgName = pkg?.loai_dong_goi ?? '';
+    const tags = version === 'v2'
+      ? (item.tagsLevel3Details ?? []).map(t => t.name)
+      : (item.tags_level_3 ?? []);
+    const imgSrc = item.imageUrls?.[0];
+    const isOverlap = overlapIds?.has(item.id);
+
+    return `
+      <div class="product-card ${isOverlap ? 'highlight' : ''}" title="${item.name}">
+        ${imgSrc
+          ? `<img class="card-img" src="${imgSrc}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          : ''}
+        <div class="card-img-placeholder" ${imgSrc ? 'style="display:none"' : ''}>📦</div>
+        <div class="card-body">
+          <div class="card-name">${item.name}</div>
+          <span class="card-price">${fmt(price)}</span>
+          <div class="card-meta">
+            ${pkgName ? `<span class="tag tag-pkg">${pkgName}</span>` : ''}
+            ${tags.slice(0,1).map(t => `<span class="tag">${t}</span>`).join('')}
+          </div>
+          ${amountSold > 0 ? `<div class="card-sold">Đã bán: <span>${amountSold.toLocaleString('vi-VN')}</span></div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Render ──────────────────────────────────────────────────────────────
+  function renderResults(version, items, overlapIds) {
+    const container = document.getElementById(`${version}-results`);
+    if (!items.length) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon">📭</div><div>Không có sản phẩm</div></div>`;
+      return;
+    }
+
+    const view = state[version].view;
+
+    let bodyHtml = '';
+    if (view === 'list') {
+      bodyHtml = `<div class="product-list">
+        ${items.map((item, i) => buildRow(item, version, i + 1, overlapIds)).join('')}
+      </div>`;
+    } else {
+      bodyHtml = `<div class="product-grid">
+        ${items.map(item => buildCard(item, version, overlapIds)).join('')}
+      </div>`;
+    }
+
+    let paginationHtml = '';
+    if (version === 'v2' && state.v2.meta) {
+      const { page, totalPages, total } = state.v2.meta;
+      paginationHtml = `
+        <div class="pagination">
+          <button class="btn-page" onclick="v2GoPage(${page - 1})" ${page <= 1 ? 'disabled' : ''}>← Prev</button>
+          <span class="page-info">Trang ${page} / ${totalPages} &nbsp;·&nbsp; ${total.toLocaleString('vi-VN')} sản phẩm</span>
+          <button class="btn-page" onclick="v2GoPage(${page + 1})" ${page >= totalPages ? 'disabled' : ''}>Next →</button>
+        </div>`;
+    }
+    if (version === 'v1') {
+      const limit = parseInt(document.getElementById('v1-limit').value) || 12;
+      const offset = state.v1.offset;
+      const count = state.v1.count;
+      const currentPage = Math.floor(offset / limit) + 1;
+      const totalPages = Math.ceil(count / limit);
+      paginationHtml = `
+        <div class="pagination">
+          <button class="btn-page" onclick="v1GoPage(${offset - limit})" ${offset <= 0 ? 'disabled' : ''}>← Prev</button>
+          <span class="page-info">Trang ${currentPage} / ${totalPages} &nbsp;·&nbsp; ${count.toLocaleString('vi-VN')} sản phẩm</span>
+          <button class="btn-page" onclick="v1GoPage(${offset + limit})" ${offset + limit >= count ? 'disabled' : ''}>Next →</button>
+        </div>`;
+    }
+
+    const overlapNote = overlapIds?.size
+      ? `<div class="overlap-note">✓ <b>${overlapIds.size}</b> sản phẩm trùng với bên kia (viền xanh lá)</div>`
+      : '';
+
+    container.innerHTML = overlapNote + bodyHtml + paginationHtml;
+  }
+
+  // ── V2 ─────────────────────────────────────────────────────────────────
+  async function runV2(page) {
+    const baseUrl = document.getElementById('v2-base-url').value.trim();
+    const endpoint = document.getElementById('v2-endpoint').value.trim();
+    const p = page ?? parseInt(document.getElementById('v2-page').value) ?? 1;
+    const limit = parseInt(document.getElementById('v2-limit').value) ?? 12;
+    const sort = document.getElementById('v2-sort').value;
+    const listType = document.getElementById('v2-list-type').value;
+    const lat = parseFloat(document.getElementById('v2-lat').value);
+    const lng = parseFloat(document.getElementById('v2-lng').value);
+    let extraHeaders = {};
+    try { extraHeaders = JSON.parse(document.getElementById('v2-headers').value || '{}'); } catch(e) {}
+
+    document.getElementById('v2-toggle-summary').textContent = `page=${p} · limit=${limit} · ${listType}`;
+    const body = { page: p, limit, sort, listType, location: { lat, lng }, isExcludeRx: true };
+
+    setStatus('v2', 'loading', 'Đang gọi API…');
+    document.getElementById('v2-run-btn').disabled = true;
+
+    const t0 = performance.now();
+    try {
+      const res = await fetch(baseUrl + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'accept': '*/*', ...extraHeaders },
+        body: JSON.stringify(body)
+      });
+      const elapsed = Math.round(performance.now() - t0);
+      const json = await res.json();
+
+      if (!res.ok || json.error_code !== 0) throw new Error(json.message?.[0] ?? `HTTP ${res.status}`);
+
+      state.v2.items = json.data.items ?? [];
+      state.v2.meta = json.data.meta;
+      state.v2.page = p;
+
+      setStatus('v2', 'ok', `✓ ${state.v2.items.length} sản phẩm`, `${elapsed}ms · total ${json.data.meta.total.toLocaleString('vi-VN')}`);
+      const overlap = renderOverlapBadge();
+      renderResults('v2', state.v2.items, overlap);
+      if (state.v1.items.length) renderResults('v1', state.v1.items, overlap);
+    } catch (err) {
+      const elapsed = Math.round(performance.now() - t0);
+      setStatus('v2', 'error', `✗ ${err.message}`, `${elapsed}ms`);
+      document.getElementById('v2-results').innerHTML = `
+        <div class="empty"><div class="empty-icon">⚠️</div><div style="color:var(--danger)">${err.message}</div></div>`;
+    } finally {
+      document.getElementById('v2-run-btn').disabled = false;
+    }
+  }
+
+  function v2GoPage(page) {
+    document.getElementById('v2-page').value = page;
+    runV2(page);
+  }
+
+  // ── V1 ─────────────────────────────────────────────────────────────────
+  async function runV1(offset) {
+    const baseUrl = document.getElementById('v1-base-url').value.trim();
+    const endpoint = document.getElementById('v1-endpoint').value.trim();
+    const off = offset ?? parseInt(document.getElementById('v1-offset').value) ?? 0;
+    const limit = parseInt(document.getElementById('v1-limit').value) ?? 12;
+    const type = document.getElementById('v1-type').value;
+    const token = document.getElementById('v1-token').value.trim();
+
+    document.getElementById('v1-toggle-summary').textContent = `offset=${off} · limit=${limit} · ${type.replace('_IN_COMMON','')}`;
+    const body = { offset: off, limit, type };
+
+    setStatus('v1', 'loading', 'Đang gọi API…');
+    document.getElementById('v1-run-btn').disabled = true;
+
+    const t0 = performance.now();
+    try {
+      const headers = {
+        'Content-Type': 'application/json',
+        'accept': 'application/json, text/plain, */*',
+        'origin': 'https://www.medigoapp.com',
+        'referer': 'https://www.medigoapp.com/',
+        'cache-control': 'no-cache',
+      };
+      if (token) headers['authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(baseUrl + endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(body)
+      });
+      const elapsed = Math.round(performance.now() - t0);
+      const json = await res.json();
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      state.v1.items = json.data ?? [];
+      state.v1.count = json.count ?? 0;
+      state.v1.offset = off;
+
+      setStatus('v1', 'ok', `✓ ${state.v1.items.length} sản phẩm`, `${elapsed}ms · total ${json.count?.toLocaleString('vi-VN') ?? '?'}`);
+      const overlap = renderOverlapBadge();
+      renderResults('v1', state.v1.items, overlap);
+      if (state.v2.items.length) renderResults('v2', state.v2.items, overlap);
+    } catch (err) {
+      const elapsed = Math.round(performance.now() - t0);
+      setStatus('v1', 'error', `✗ ${err.message}`, `${elapsed}ms`);
+      document.getElementById('v1-results').innerHTML = `
+        <div class="empty"><div class="empty-icon">⚠️</div><div style="color:var(--danger)">${err.message}</div>
+        <div style="color:var(--muted);font-size:11px;margin-top:6px">Lưu ý: CORS có thể chặn request từ trình duyệt đến production API</div></div>`;
+    } finally {
+      document.getElementById('v1-run-btn').disabled = false;
+    }
+  }
+
+  function v1GoPage(offset) {
+    document.getElementById('v1-offset').value = offset;
+    runV1(offset);
+  }
+</script>
+</body>
+</html>
