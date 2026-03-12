@@ -321,9 +321,13 @@
       white-space: nowrap;
     }
     .tag-pkg {
-      background: rgba(59,130,246,.1);
-      border-color: rgba(59,130,246,.3);
-      color: #93c5fd;
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: .4px;
+      padding: 2px 9px;
+      border-radius: 20px;
     }
     .tag-l1 {
       background: rgba(168,85,247,.1);
@@ -726,12 +730,12 @@
           <div class="row-name">${item.name}</div>
           <div class="row-price-row">
             <span class="row-price">${fmt(price)}</span>
+            ${pkgName ? `<span class="tag tag-pkg">${pkgName}</span>` : ''}
             ${origPrice > price && origPrice > 0 ? `<span class="row-price-original">${fmt(origPrice)}</span>` : ''}
             ${discount >= 5 ? `<span class="row-price-discount">-${discount}%</span>` : ''}
             ${priceRange}
           </div>
           <div class="row-meta">
-            ${pkgName ? `<span class="tag tag-pkg">${pkgName}</span>` : ''}
             ${tags1.map(t => `<span class="tag tag-l1">${t}</span>`).join('')}
             ${tags2.map(t => `<span class="tag tag-l2">${t}</span>`).join('')}
             ${tags3.map(t => `<span class="tag tag-l3">${t}</span>`).join('')}
