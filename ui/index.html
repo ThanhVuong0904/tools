@@ -509,6 +509,7 @@
             <select id="v2-list-type">
               <option value="recommended">recommended</option>
               <option value="best_selling">best_selling</option>
+              <option value="top_seller">top_seller</option>
             </select>
           </div>
           <div class="field">
@@ -565,6 +566,13 @@
       <div class="config-inner">
         <div class="config-grid">
           <div class="field field-full">
+            <label>Endpoint Preset</label>
+            <select id="v1-mode" onchange="switchV1Mode()">
+              <option value="recommend">POST /recommend/products-v2 — Recommend</option>
+              <option value="best_selling">POST /es/products-best-selling — Best Selling</option>
+            </select>
+          </div>
+          <div class="field field-full">
             <label>Base URL</label>
             <input id="v1-base-url" value="https://production-api.medigoapp.com" />
           </div>
@@ -572,21 +580,58 @@
             <label>Endpoint</label>
             <input id="v1-endpoint" value="/recommend/products-v2" />
           </div>
-          <div class="field">
+
+          <!-- ── Recommend mode fields ── -->
+          <div class="field" id="v1-f-offset">
             <label>Offset</label>
             <input id="v1-offset" type="number" value="0" min="0" />
           </div>
-          <div class="field">
+          <div class="field" id="v1-f-limit">
             <label>Limit</label>
             <input id="v1-limit" type="number" value="12" min="1" max="100" />
           </div>
-          <div class="field field-full">
+          <div class="field field-full" id="v1-f-type">
             <label>Type</label>
             <select id="v1-type">
               <option value="TOP_SELLER_IN_COMMON">TOP_SELLER_IN_COMMON</option>
               <option value="RECOMMENDED">RECOMMENDED</option>
             </select>
           </div>
+
+          <!-- ── Best Selling mode fields ── -->
+          <div class="field" id="v1-f-from" style="display:none">
+            <label>From</label>
+            <input id="v1-from" type="number" value="0" min="0" />
+          </div>
+          <div class="field" id="v1-f-size" style="display:none">
+            <label>Size</label>
+            <input id="v1-size" type="number" value="30" min="1" max="100" />
+          </div>
+          <div class="field" id="v1-f-sort-es" style="display:none">
+            <label>Sort</label>
+            <select id="v1-sort-es">
+              <option value="best_selling">best_selling</option>
+              <option value="price_asc">price_asc</option>
+              <option value="price_desc">price_desc</option>
+            </select>
+          </div>
+          <div class="field" id="v1-f-area" style="display:none">
+            <label>Area</label>
+            <select id="v1-area">
+              <option value="ca_nuoc">ca_nuoc</option>
+              <option value="mien_nam">mien_nam</option>
+              <option value="mien_bac">mien_bac</option>
+              <option value="mien_trung">mien_trung</option>
+            </select>
+          </div>
+          <div class="field field-full" id="v1-f-include-rx" style="display:none">
+            <label style="flex-direction:row;align-items:center;gap:8px;cursor:pointer">
+              <input id="v1-include-rx" type="checkbox" style="width:auto;accent-color:var(--v1)" />
+              Include Rx (includeRx)
+            </label>
+          </div>
+
+          <!-- ── Shared: Token ── -->
           <div class="field field-full">
             <label>Authorization Bearer Token</label>
             <textarea id="v1-token" rows="2" placeholder="Paste JWT token here (without 'Bearer ' prefix)">eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJtQ3JlYXRlZCI6IjIwMjUtMDctMTZUMDM6NDA6MjcuMDAwWiIsIm1JZCI6NzE3NTMzLCJtSXNEZXYiOmZhbHNlLCJtVGVsTnVtYmVyIjoiKzg0ODc2MTEyOTE0IiwibVVzZXJBZ2VudCI6Ik1lZGlnby1Vc2VyLzEyLjkuNyAoY29tLm1lZGlnby51c2VyOyBidWlsZDoxOyBpT1MgMTguMy4xOyBpUGhvbmUxNCw1OyBpUGhvbmUgMTMpIFJOMC44MCIsIm1Vc2VyV2ViQWdlbnQiOiJNb3ppbGxhLzUuMCAoTWFjaW50b3NoOyBJbnRlbCBNYWMgT1MgWCAxMF8xNV83KSBBcHBsZVdlYktpdC81MzcuMzYgKEtIVE1MLCBsaWtlIEdlY2tvKSBDaHJvbWUvMTQ0LjAuMC4wIFNhZmFyaS81MzcuMzYiLCJtUHVibnViQ2hhbm5lbCI6IlVTRVJfNzE3NTMzIiwibUxhc3RGZXRjaERiIjoiMjAyNi0wMy0wNlQwNzozODoxNi4wMjlaIiwibUZjbVRva2VuIjoiZnl5a2FYX2t1RXFDaVBNaEdsclczaTpBUEE5MWJHb3gtOHZNMU1ZR0JsRlpRdzY0bGRwc1hWM1FrVW9HbVFEMWM0THFJRTJNV0h5NGhBdTgwd3RvWFlxaWEtSlFuYmkyVi01ZUpmSVU1Q1ltSXVvS2pkSUpMVmZRY0lxRG00emllcVBZOE9JYi1FdWRQVSIsIm1EaXNwbGF5TmFtZSI6Ik5ow6JuIFRow6FpIDEyMyIsIm1TdHJpbmdlZUlkIjoiVVNFUl84NDg3NjExMjkxNCIsIm1UeXBlIjoiQ1JFQVRFRF9CWV9BRE1JTiIsIm1DdXJyZW50RGV2aWNlSWQiOiJBeHVhX0dWcGJMWTd5bk9fS3NaQiIsImlhdCI6MTc3Mjc4MjY5NiwiZXhwIjoyMDg4MzU4Njk2fQ.LvkY6q8CSyvGI-HqpNtMGNuQ9oBD2jwYVqsskdytW0cnTietykjxQrMK7aIt099ro74FGzs2QFij91uckq_Smw</textarea>
@@ -617,7 +662,7 @@
   // ── State ──────────────────────────────────────────────────────────────
   const state = {
     v2: { items: [], meta: null, page: 1, view: 'list' },
-    v1: { items: [], count: 0, offset: 0, view: 'list' }
+    v1: { items: [], count: 0, offset: 0, view: 'list', pageSize: 12 }
   };
 
   // init config heights for animation
@@ -643,6 +688,29 @@
       cfg.classList.remove('collapsed');
       cfg.style.maxHeight = cfg.scrollHeight + 'px';
       arrow.classList.add('open');
+    }
+  }
+
+  // ── V1 mode switch ──────────────────────────────────────────────────────
+  function switchV1Mode() {
+    const mode = document.getElementById('v1-mode').value;
+    const isBS = mode === 'best_selling';
+
+    ['v1-f-offset', 'v1-f-limit', 'v1-f-type'].forEach(id => {
+      document.getElementById(id).style.display = isBS ? 'none' : '';
+    });
+    ['v1-f-from', 'v1-f-size', 'v1-f-sort-es', 'v1-f-area', 'v1-f-include-rx'].forEach(id => {
+      document.getElementById(id).style.display = isBS ? '' : 'none';
+    });
+
+    const endpoint = isBS ? '/es/products-best-selling' : '/recommend/products-v2';
+    document.getElementById('v1-endpoint').value = endpoint;
+    document.querySelector('.panel-v1 .panel-url').textContent = `POST ${endpoint}`;
+
+    const cfg = document.getElementById('v1-config');
+    if (!cfg.classList.contains('collapsed')) {
+      cfg.style.maxHeight = 'none';
+      requestAnimationFrame(() => { cfg.style.maxHeight = cfg.scrollHeight + 'px'; });
     }
   }
 
@@ -814,7 +882,7 @@
         </div>`;
     }
     if (version === 'v1') {
-      const limit = parseInt(document.getElementById('v1-limit').value) || 12;
+      const limit = state.v1.pageSize || 12;
       const offset = state.v1.offset;
       const count = state.v1.count;
       const currentPage = Math.floor(offset / limit) + 1;
@@ -889,46 +957,64 @@
   }
 
   // ── V1 ─────────────────────────────────────────────────────────────────
-  async function runV1(offset) {
+  async function runV1(pagingArg) {
+    const mode = document.getElementById('v1-mode').value;
     const baseUrl = document.getElementById('v1-base-url').value.trim();
     const endpoint = document.getElementById('v1-endpoint').value.trim();
-    const off = offset ?? parseInt(document.getElementById('v1-offset').value) ?? 0;
-    const limit = parseInt(document.getElementById('v1-limit').value) ?? 12;
-    const type = document.getElementById('v1-type').value;
     const token = document.getElementById('v1-token').value.trim();
 
-    document.getElementById('v1-toggle-summary').textContent = `offset=${off} · limit=${limit} · ${type.replace('_IN_COMMON','')}`;
-    const body = { offset: off, limit, type };
+    const headers = {
+      'Content-Type': 'application/json',
+      'accept': 'application/json, text/plain, */*',
+      'origin': 'https://www.medigoapp.com',
+      'referer': 'https://www.medigoapp.com/',
+      'cache-control': 'no-cache',
+    };
+    if (token) headers['authorization'] = `Bearer ${token}`;
+
+    let body;
+    if (mode === 'best_selling') {
+      const from = pagingArg ?? parseInt(document.getElementById('v1-from').value) ?? 0;
+      const size = parseInt(document.getElementById('v1-size').value) ?? 30;
+      const sort = document.getElementById('v1-sort-es').value;
+      const area = document.getElementById('v1-area').value;
+      const includeRx = document.getElementById('v1-include-rx').checked;
+
+      document.getElementById('v1-toggle-summary').textContent = `from=${from} · size=${size} · ${sort}`;
+      body = { sort, area, from, size, includeRx };
+      state.v1.offset = from;
+      state.v1.pageSize = size;
+    } else {
+      const off = pagingArg ?? parseInt(document.getElementById('v1-offset').value) ?? 0;
+      const limit = parseInt(document.getElementById('v1-limit').value) ?? 12;
+      const type = document.getElementById('v1-type').value;
+
+      document.getElementById('v1-toggle-summary').textContent = `offset=${off} · limit=${limit} · ${type.replace('_IN_COMMON','')}`;
+      body = { offset: off, limit, type };
+      state.v1.offset = off;
+      state.v1.pageSize = limit;
+    }
 
     setStatus('v1', 'loading', 'Đang gọi API…');
     document.getElementById('v1-run-btn').disabled = true;
 
     const t0 = performance.now();
     try {
-      const headers = {
-        'Content-Type': 'application/json',
-        'accept': 'application/json, text/plain, */*',
-        'origin': 'https://www.medigoapp.com',
-        'referer': 'https://www.medigoapp.com/',
-        'cache-control': 'no-cache',
-      };
-      if (token) headers['authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(baseUrl + endpoint, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body)
-      });
+      const res = await fetch(baseUrl + endpoint, { method: 'POST', headers, body: JSON.stringify(body) });
       const elapsed = Math.round(performance.now() - t0);
       const json = await res.json();
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      state.v1.items = json.data ?? [];
-      state.v1.count = json.count ?? 0;
-      state.v1.offset = off;
+      if (mode === 'best_selling') {
+        state.v1.items = (json.hits?.hits ?? []).map(h => h._source);
+        state.v1.count = json.hits?.total?.value ?? state.v1.items.length;
+      } else {
+        state.v1.items = json.data ?? json.items ?? (Array.isArray(json) ? json : []);
+        state.v1.count = json.count ?? json.total ?? state.v1.items.length;
+      }
 
-      setStatus('v1', 'ok', `✓ ${state.v1.items.length} sản phẩm`, `${elapsed}ms · total ${json.count?.toLocaleString('vi-VN') ?? '?'}`);
+      setStatus('v1', 'ok', `✓ ${state.v1.items.length} sản phẩm`, `${elapsed}ms · total ${state.v1.count.toLocaleString('vi-VN')}`);
       const overlap = renderOverlapBadge();
       renderResults('v1', state.v1.items, overlap);
       if (state.v2.items.length) renderResults('v2', state.v2.items, overlap);
@@ -944,7 +1030,12 @@
   }
 
   function v1GoPage(offset) {
-    document.getElementById('v1-offset').value = offset;
+    const mode = document.getElementById('v1-mode').value;
+    if (mode === 'best_selling') {
+      document.getElementById('v1-from').value = offset;
+    } else {
+      document.getElementById('v1-offset').value = offset;
+    }
     runV1(offset);
   }
 </script>
